@@ -61,7 +61,7 @@ class GoogleSheet
         $str = ob_get_contents();
         ob_end_clean();
 
-        return $str;
+        return trim($str, "\r\n");
     }
 
     /**
@@ -83,6 +83,27 @@ class GoogleSheet
         $range = "{$sheetTitle}!R1C1:R{$rowCount}C{$realColCount}";
 
         return $this->googleSheetService->spreadsheets_values->get($this->spreadsheetId, $range)->getValues();
+    }
+
+    /**
+     * @param $sheetTitle
+     * @return mixed
+     * @throws \Exception
+     */
+    public function getSheetDataHash($sheetTitle)
+    {
+        $dataArray = $this->getSheetDataArray($sheetTitle);
+        $headers = array_shift($dataArray);
+        array_walk($dataArray, function (&$a) use ($headers) {
+            $countHeaders = count($headers);
+            $countA = count($a);
+            if ($countHeaders > $countA){
+                $a = array_pad($a, $countHeaders, '');
+            }
+            $a = array_combine($headers, $a);
+        });
+
+        return $dataArray;
     }
 
     /**
