@@ -12,7 +12,7 @@ class GoogleSheetClient
     {
         $credentialFilepath = getenv('GOOGLE_CREDENTIAL_JSON_FILE');
         if (!$credentialFilepath && class_exists('\eZSys')){
-            \eZSys::rootDir() . '/settings/google_credentials.json';
+            $credentialFilepath = \eZSys::rootDir() . '/settings/google_credentials.json';
         }
         $this->credentialFilepath = $credentialFilepath;
     }
