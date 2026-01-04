@@ -4,17 +4,59 @@ namespace Opencontent\Google;
 
 class GoogleSheetClient
 {
-    private $credentialFilepath;
+    const EZSITEDATA_KEY = 'oc_google_sheet_credentials';
+
+    private $credentials = null;
+
+    private $credentialsSource = null;
 
     private $client;
 
-    public function __construct()
+    public function __construct(array $credentials = null)
     {
-        $credentialFilepath = getenv('GOOGLE_CREDENTIAL_JSON_FILE');
-        if (!$credentialFilepath && class_exists('\eZSys')){
-            $credentialFilepath = \eZSys::rootDir() . '/settings/google_credentials.json';
+        if ($credentials) {
+            $this->credentials = $credentials;
+        } else {
+            if (class_exists('\eZSys')) {
+                $this->provideCredentialFromEzSiteData();
+                if (!$this->credentials && class_exists('\eZSiteData')) {
+                    $this->provideCredentialFromEzSettingsFilePath();
+                }
+            }
+            if (!$this->credentials) {
+                $this->provideCredentialFromEnvJsonFilePath();
+            }
         }
-        $this->credentialFilepath = $credentialFilepath;
+    }
+
+    private function provideCredentialFromEnvJsonFilePath()
+    {
+        $credentials = getenv('GOOGLE_CREDENTIAL_JSON_FILE');
+        if ($credentials && file_exists($credentials)) {
+            $this->credentials = json_decode(file_get_contents($credentials), true);
+            $this->credentialsSource = 'DEFAULT_ENV';
+        }
+    }
+
+    private function provideCredentialFromEzSettingsFilePath()
+    {
+        $credentials = \eZSys::rootDir() . '/settings/google_credentials.json';
+        if (file_exists($credentials)) {
+            $this->credentials = json_decode(file_get_contents($credentials), true);
+            $this->credentialsSource = 'DEFAULT_SETTINGS';
+        }
+    }
+
+    private function provideCredentialFromEzSiteData()
+    {
+        $siteData = \eZSiteData::fetchByName(self::EZSITEDATA_KEY);
+        if ($siteData instanceof \eZSiteData) {
+            $data = json_decode($siteData->attribute('value'), true);
+            if ($data) {
+                $this->credentials = $data;
+                $this->credentialsSource = 'CUSTOM';
+            }
+        }
     }
 
     public function getGoogleClient()
@@ -24,7 +66,7 @@ class GoogleSheetClient
             $client->setApplicationName('Google Sheets Importer');
             $client->setScopes([\Google_Service_Sheets::SPREADSHEETS]);
             $client->setAccessType('offline');
-            $client->setAuthConfig($this->credentialFilepath);
+            $client->setAuthConfig($this->credentials);
             $this->client = $client;
         }
 
@@ -44,5 +86,13 @@ class GoogleSheetClient
         return $this->client;
     }
 
+    public function getCredentials(): ?array
+    {
+        return $this->credentials;
+    }
 
+    public function getCredentialsSource()
+    {
+        return $this->credentialsSource;
+    }
 }
