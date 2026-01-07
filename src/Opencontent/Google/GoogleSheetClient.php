@@ -86,7 +86,7 @@ class GoogleSheetClient
         return $this->client;
     }
 
-    public function getCredentials(): ?array
+    public function getCredentials()
     {
         return $this->credentials;
     }
